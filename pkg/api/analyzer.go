@@ -1,6 +1,7 @@
 package api
 
 import (
+	"github.com/egor-erm/gota/internal/indicators/momentum"
 	"github.com/egor-erm/gota/internal/indicators/trend"
 	"github.com/egor-erm/gota/pkg/gota"
 )
@@ -20,4 +21,10 @@ func (a *Analyzer) SMA(period int) []float64 {
 	sma := trend.NewSMA(period)
 
 	return sma.Calculate(a.series)
+}
+
+func (a *Analyzer) RSI(period int) []float64 {
+	rsi := momentum.NewRSI(period)
+
+	return rsi.Calculate(a.series)
 }

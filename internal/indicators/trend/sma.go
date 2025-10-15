@@ -13,10 +13,6 @@ func NewSMA(period int) *SMA {
 	return &SMA{period: period}
 }
 
-func (SMA) Name() string {
-	return "SMA"
-}
-
 func (s SMA) Period() int {
 	return s.period
 }
