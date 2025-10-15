@@ -1,0 +1,23 @@
+package api
+
+import (
+	"github.com/egor-erm/gota/internal/indicators/trend"
+	"github.com/egor-erm/gota/pkg/gota"
+)
+
+// Analyzer - структура для анализа данных
+type Analyzer struct {
+	series gota.Series
+}
+
+func NewAnalyzer(series gota.Series) *Analyzer {
+	return &Analyzer{
+		series: series,
+	}
+}
+
+func (a *Analyzer) SMA(period int) []float64 {
+	sma := trend.NewSMA(period)
+
+	return sma.Calculate(a.series)
+}
