@@ -5,6 +5,7 @@ import (
 )
 
 // SMA - Simple Moving Average
+// https://learn.bybit.com/ru/indicators/what-is-simple-moving-average-sma
 type SMA struct {
 	period int
 }

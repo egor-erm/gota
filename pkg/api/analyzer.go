@@ -23,6 +23,12 @@ func (a *Analyzer) SMA(period int) []float64 {
 	return sma.Calculate(a.series)
 }
 
+func (a *Analyzer) EMA(period int) []float64 {
+	ema := trend.NewEMA(period)
+
+	return ema.Calculate(a.series)
+}
+
 func (a *Analyzer) RSI(period int) []float64 {
 	rsi := momentum.NewRSI(period)
 
