@@ -8,6 +8,7 @@
 ### Трендовые индикаторы
 - **SMA (Simple Moving Average)** - Простая скользящая средняя
 - **EMA (Exponential Moving Average)** - Экспоненциальная скользящая средняя
+- **WMA (Weighted Moving Average)** - Взвешенная скользящая средняя
 
 
 ### Индикаторы момента
