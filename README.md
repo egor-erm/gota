@@ -9,7 +9,8 @@
 - **SMA (Simple Moving Average)** - Простая скользящая средняя
 - **EMA (Exponential Moving Average)** - Экспоненциальная скользящая средняя
 - **WMA (Weighted Moving Average)** - Взвешенная скользящая средняя
-
+- **MACD (Moving Average Convergence/Divergence)** - Cхождение/Расхождение скользящих средних
+ 
 
 ### Индикаторы момента
 - **RSI (Relative Strength Index)** - Индекс относительной силы

@@ -23,7 +23,7 @@ func main() {
 }
 
 func createCandles() gota.CandleSeries {
-	baseTime := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	baseTime := time.Now()
 	closePrices := []float64{49.85, 50.00, 52.25, 51.50, 49.75, 48.90, 51.10, 52.40, 54.20, 55.80, 56.50, 50.25, 49.35, 49.90, 52.10}
 
 	candles := make([]gota.Candle, len(closePrices))

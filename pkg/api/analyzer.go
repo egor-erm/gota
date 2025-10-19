@@ -35,6 +35,17 @@ func (a *Analyzer) WMA(period int) []float64 {
 	return wma.Calculate(a.series)
 }
 
+func (a *Analyzer) MACD(fast, slow, signal int) ([]float64, []float64, []float64) {
+	macd := trend.NewMACD(fast, slow, signal)
+
+	result := macd.Calculate(a.series)
+	if result == nil {
+		return nil, nil, nil
+	}
+
+	return result.MACDLine, result.SignalLine, result.Histogram
+}
+
 func (a *Analyzer) RSI(period int) []float64 {
 	rsi := momentum.NewRSI(period)
 

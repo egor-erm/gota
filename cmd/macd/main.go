@@ -8,7 +8,7 @@ import (
 	"github.com/egor-erm/gota/pkg/gota"
 )
 
-// Пример с сайта https://learn.bybit.com/ru/indicators/what-is-simple-moving-average-sma
+// Случайный пример
 func main() {
 	candles := createCandles()
 
@@ -17,14 +17,16 @@ func main() {
 	}
 
 	analyser := api.NewAnalyzer(candles)
-	sma := analyser.SMA(10)
+	macdLine, signalLine, histogram := analyser.MACD(12, 26, 9)
 
-	fmt.Println("SMA", sma)
+	fmt.Println("MACD Line:", macdLine)
+	fmt.Println("Signal Line:", signalLine)
+	fmt.Println("Histogram:", histogram)
 }
 
 func createCandles() gota.CandleSeries {
 	baseTime := time.Now()
-	closePrices := []float64{50.00, 52.25, 51.50, 49.75, 48.90, 51.10, 52.40, 54.20, 55.80, 56.50}
+	closePrices := []float64{50, 57, 58, 53, 55, 49, 56, 54, 63, 64, 60, 50, 57, 58, 53, 55, 49, 56, 54, 63, 64, 60, 50, 57, 58, 53, 55, 49, 56, 54, 63, 64, 60, 50, 57, 58, 53, 55, 49, 56, 54, 63, 64, 60}
 
 	candles := make([]gota.Candle, len(closePrices))
 	for i := 0; i < len(closePrices); i++ {
