@@ -1,9 +1,9 @@
 package api
 
 import (
-	"github.com/egor-erm/gota/internal/indicators/momentum"
-	"github.com/egor-erm/gota/internal/indicators/trend"
-	"github.com/egor-erm/gota/pkg/gota"
+	"github.com/egor-erm/gota"
+	"github.com/egor-erm/gota/indicators/momentum"
+	"github.com/egor-erm/gota/indicators/trend"
 )
 
 // Analyzer - структура для анализа данных

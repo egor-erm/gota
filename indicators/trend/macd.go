@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/egor-erm/gota/pkg/gota"
-	"github.com/egor-erm/gota/pkg/utils"
+	"github.com/egor-erm/gota"
+	"github.com/egor-erm/gota/utils"
 )
 
 // MACD - Moving Average Convergence/Divergence

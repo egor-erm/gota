@@ -1,7 +1,7 @@
 package trend
 
 import (
-	"github.com/egor-erm/gota/pkg/gota"
+	"github.com/egor-erm/gota"
 )
 
 // SMA - Simple Moving Average

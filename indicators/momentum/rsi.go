@@ -3,7 +3,7 @@ package momentum
 import (
 	"math"
 
-	"github.com/egor-erm/gota/pkg/gota"
+	"github.com/egor-erm/gota"
 )
 
 // RSI - Relative Strength Index

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/egor-erm/gota/pkg/api"
-	"github.com/egor-erm/gota/pkg/gota"
+	"github.com/egor-erm/gota"
+	"github.com/egor-erm/gota/api"
 )
 
 // Пример с сайта https://www.binance.com/ru/academy/glossary/exponential-moving-average-ema

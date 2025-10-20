@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/egor-erm/gota/pkg/api"
-	"github.com/egor-erm/gota/pkg/gota"
+	"github.com/egor-erm/gota"
+	"github.com/egor-erm/gota/api"
 )
 
 // Реализация RSI совпадает с реализацией с сайта https://habr.com/ru/companies/otus/articles/823500/
