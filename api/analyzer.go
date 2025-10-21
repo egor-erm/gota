@@ -4,6 +4,7 @@ import (
 	"github.com/egor-erm/gota"
 	"github.com/egor-erm/gota/indicators/momentum"
 	"github.com/egor-erm/gota/indicators/trend"
+	"github.com/egor-erm/gota/indicators/volatility"
 )
 
 // Analyzer - структура для анализа данных
@@ -50,4 +51,15 @@ func (a *Analyzer) RSI(period int) []float64 {
 	rsi := momentum.NewRSI(period)
 
 	return rsi.Calculate(a.series)
+}
+
+func (a *Analyzer) BollingerBands(period int, stdDev float64) ([]float64, []float64, []float64) {
+	bb := volatility.NewBollingerBands(period, stdDev)
+
+	result := bb.Calculate(a.series)
+	if result == nil {
+		return nil, nil, nil
+	}
+
+	return result.UpperBand, result.MiddleBand, result.LowerBand
 }
