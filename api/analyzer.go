@@ -53,6 +53,12 @@ func (a *Analyzer) RSI(period int) []float64 {
 	return rsi.Calculate(a.series)
 }
 
+func (a *Analyzer) ATR(period int) []float64 {
+	atr := volatility.NewATR(period)
+
+	return atr.Calculate(a.series)
+}
+
 func (a *Analyzer) BollingerBands(period int, stdDev float64) ([]float64, []float64, []float64) {
 	bb := volatility.NewBollingerBands(period, stdDev)
 

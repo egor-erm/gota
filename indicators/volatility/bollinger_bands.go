@@ -7,6 +7,7 @@ import (
 	"github.com/egor-erm/gota/indicators/trend"
 )
 
+// Bollinger Bands
 type BollingerBands struct {
 	period int
 	stdDev float64
