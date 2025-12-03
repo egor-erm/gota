@@ -69,3 +69,14 @@ func (a *Analyzer) BollingerBands(period int, stdDev float64) ([]float64, []floa
 
 	return result.UpperBand, result.MiddleBand, result.LowerBand
 }
+
+func (a *Analyzer) StochRSI(rsiPeriod, stochPeriod, smoothK, smoothD int) ([]float64, []float64) {
+	stochrsi := momentum.NewStochRSI(rsiPeriod, stochPeriod, smoothK, smoothD)
+
+	result := stochrsi.Calculate(a.series)
+	if result == nil {
+		return nil, nil
+	}
+
+	return result.K, result.D
+}
