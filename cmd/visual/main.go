@@ -37,7 +37,7 @@ func main() {
 	visualizer := api.NewVisualizer(series, 1200, 800)
 
 	// Добавляем индикаторы
-	visualizer.AddStochRSI(14, 14, 3, 3)
+	visualizer.AddStochRSI(14, 14, 3, 3, api.ORANGE, api.BLUE)
 
 	// Рендерим и сохраняем
 	err := visualizer.RenderToFile("chart.png")

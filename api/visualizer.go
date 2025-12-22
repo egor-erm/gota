@@ -13,6 +13,30 @@ import (
 	"github.com/fogleman/gg"
 )
 
+var (
+	RED        = color.RGBA{255, 80, 80, 255}
+	GREEN      = color.RGBA{0, 200, 100, 255}
+	BLUE       = color.RGBA{100, 100, 255, 255}
+	YELLOW     = color.RGBA{255, 200, 50, 255}
+	PURPLE     = color.RGBA{200, 100, 255, 255}
+	CYAN       = color.RGBA{100, 200, 255, 255}
+	ORANGE     = color.RGBA{255, 150, 50, 255}
+	PINK       = color.RGBA{255, 100, 200, 255}
+	WHITE      = color.RGBA{255, 255, 255, 255}
+	GRAY       = color.RGBA{150, 150, 150, 255}
+	DARK_GRAY  = color.RGBA{60, 60, 80, 255}
+	LIGHT_GRAY = color.RGBA{200, 200, 220, 255}
+	BLACK      = color.RGBA{0, 0, 0, 255}
+
+	// Полупрозрачные версии
+	RED_TRANSPARENT    = color.RGBA{255, 80, 80, 150}
+	GREEN_TRANSPARENT  = color.RGBA{0, 200, 100, 150}
+	BLUE_TRANSPARENT   = color.RGBA{100, 100, 255, 150}
+	YELLOW_TRANSPARENT = color.RGBA{255, 200, 50, 150}
+	PURPLE_TRANSPARENT = color.RGBA{200, 100, 255, 150}
+	GRAY_TRANSPARENT   = color.RGBA{150, 150, 150, 100}
+)
+
 // Visualizer - структура для визуализации данных и индикаторов
 type Visualizer struct {
 	series          gota.Series
@@ -29,13 +53,13 @@ type Visualizer struct {
 
 // IndicatorConfig - конфигурация индикатора для отображения
 type IndicatorConfig struct {
-	Name    string
-	Type    IndicatorType
-	Data    [][]float64 // данные индикатора (может быть несколько линий)
-	Labels  []string    // названия линий
-	Color   color.Color
-	SubType string // подтип (например, для MACD)
-	Overlay bool   // отображать ли индикатор поверх свечей
+	Name      string
+	Type      IndicatorType
+	Data      [][]float64   // данные индикатора (может быть несколько линий)
+	Colors    []color.Color // цвета для каждой линии
+	Labels    []string      // названия линий
+	LineWidth float64       // толщина линии
+	Overlay   bool          // отображать ли индикатор поверх свечей
 }
 
 type IndicatorType string
@@ -104,94 +128,166 @@ func (v *Visualizer) AddIndicator(config IndicatorConfig) {
 }
 
 // AddSMA добавляет SMA индикатор
-func (v *Visualizer) AddSMA(period int, color color.Color) {
+func (v *Visualizer) AddSMA(period int, c color.Color) {
 	sma := NewAnalyzer(v.series).SMA(period)
 	if len(sma) > 0 {
+		// Обрезаем данные, чтобы они соответствовали свечам
+		alignedSma := v.alignIndicatorData(sma)
 		v.AddIndicator(IndicatorConfig{
-			Name:    fmt.Sprintf("SMA(%d)", period),
-			Type:    IndicatorSMA,
-			Data:    [][]float64{sma},
-			Labels:  []string{"SMA"},
-			Color:   color,
-			Overlay: true,
+			Name:      fmt.Sprintf("SMA(%d)", period),
+			Type:      IndicatorSMA,
+			Data:      [][]float64{alignedSma},
+			Colors:    []color.Color{c},
+			Labels:    []string{"SMA"},
+			LineWidth: 2.0,
+			Overlay:   true,
 		})
 	}
 }
 
 // AddEMA добавляет EMA индикатор
-func (v *Visualizer) AddEMA(period int, color color.Color) {
+func (v *Visualizer) AddEMA(period int, c color.Color) {
 	ema := NewAnalyzer(v.series).EMA(period)
 	if len(ema) > 0 {
+		// Обрезаем данные, чтобы они соответствовали свечам
+		alignedEma := v.alignIndicatorData(ema)
 		v.AddIndicator(IndicatorConfig{
-			Name:    fmt.Sprintf("EMA(%d)", period),
-			Type:    IndicatorEMA,
-			Data:    [][]float64{ema},
-			Labels:  []string{"EMA"},
-			Color:   color,
-			Overlay: true,
+			Name:      fmt.Sprintf("EMA(%d)", period),
+			Type:      IndicatorEMA,
+			Data:      [][]float64{alignedEma},
+			Colors:    []color.Color{c},
+			Labels:    []string{"EMA"},
+			LineWidth: 2.0,
+			Overlay:   true,
 		})
 	}
 }
 
 // AddRSI добавляет RSI индикатор
-func (v *Visualizer) AddRSI(period int) {
+func (v *Visualizer) AddRSI(period int, c color.Color) {
 	rsi := NewAnalyzer(v.series).RSI(period)
 	if len(rsi) > 0 {
+		// Обрезаем данные, чтобы они соответствовали свечам
+		alignedRsi := v.alignIndicatorData(rsi)
 		v.AddIndicator(IndicatorConfig{
-			Name:    fmt.Sprintf("RSI(%d)", period),
-			Type:    IndicatorRSI,
-			Data:    [][]float64{rsi},
-			Labels:  []string{"RSI"},
-			Color:   v.colors.IndicatorLines[0],
-			Overlay: false,
+			Name:      fmt.Sprintf("RSI(%d)", period),
+			Type:      IndicatorRSI,
+			Data:      [][]float64{alignedRsi},
+			Colors:    []color.Color{c},
+			Labels:    []string{"RSI"},
+			LineWidth: 1.5,
+			Overlay:   false,
 		})
 	}
 }
 
 // AddMACD добавляет MACD индикатор
-func (v *Visualizer) AddMACD(fast, slow, signal int) {
+func (v *Visualizer) AddMACD(fast, slow, signal int, macdColor, signalColor, histColor color.Color) {
 	macdLine, signalLine, histogram := NewAnalyzer(v.series).MACD(fast, slow, signal)
 	if macdLine != nil {
+		// Обрезаем данные, чтобы они соответствовали свечам
+		alignedMacdLine := v.alignIndicatorData(macdLine)
+		alignedSignalLine := v.alignIndicatorData(signalLine)
+		alignedHistogram := v.alignIndicatorData(histogram)
+
 		v.AddIndicator(IndicatorConfig{
-			Name:    fmt.Sprintf("MACD(%d,%d,%d)", fast, slow, signal),
-			Type:    IndicatorMACD,
-			Data:    [][]float64{macdLine, signalLine, histogram},
-			Labels:  []string{"MACD", "Signal", "Histogram"},
-			Color:   v.colors.IndicatorLines[0],
-			SubType: "line",
-			Overlay: false,
+			Name:      fmt.Sprintf("MACD(%d,%d,%d)", fast, slow, signal),
+			Type:      IndicatorMACD,
+			Data:      [][]float64{alignedMacdLine, alignedSignalLine, alignedHistogram},
+			Colors:    []color.Color{macdColor, signalColor, histColor},
+			Labels:    []string{"MACD", "Signal", "Histogram"},
+			LineWidth: 1.5,
+			Overlay:   false,
 		})
 	}
 }
 
 // AddBollingerBands добавляет Bollinger Bands
-func (v *Visualizer) AddBollingerBands(period int, stdDev float64) {
+func (v *Visualizer) AddBollingerBands(period int, stdDev float64, upperColor, middleColor, lowerColor color.Color) {
 	upper, middle, lower := NewAnalyzer(v.series).BollingerBands(period, stdDev)
 	if upper != nil {
+		// Обрезаем данные, чтобы они соответствовали свечам
+		alignedUpper := v.alignIndicatorData(upper)
+		alignedMiddle := v.alignIndicatorData(middle)
+		alignedLower := v.alignIndicatorData(lower)
+
 		v.AddIndicator(IndicatorConfig{
-			Name:    fmt.Sprintf("BB(%d,%.1f)", period, stdDev),
-			Type:    IndicatorBB,
-			Data:    [][]float64{upper, middle, lower},
-			Labels:  []string{"Upper", "Middle", "Lower"},
-			Color:   v.colors.IndicatorLines[2],
-			Overlay: true,
+			Name:      fmt.Sprintf("BB(%d,%.1f)", period, stdDev),
+			Type:      IndicatorBB,
+			Data:      [][]float64{alignedUpper, alignedMiddle, alignedLower},
+			Colors:    []color.Color{upperColor, middleColor, lowerColor},
+			Labels:    []string{"Upper", "Middle", "Lower"},
+			LineWidth: 1.5,
+			Overlay:   true,
 		})
 	}
 }
 
-// AddRSI добавляет StochRSI индикатор
-func (v *Visualizer) AddStochRSI(rsiPeriod, stochPeriod, smoothK, smoothD int) {
-	rsi1, rsi2 := NewAnalyzer(v.series).StochRSI(rsiPeriod, stochPeriod, smoothK, smoothD)
-	if len(rsi1) > 0 {
+// AddStochRSI добавляет StochRSI индикатор
+func (v *Visualizer) AddStochRSI(rsiPeriod, stochPeriod, smoothK, smoothD int, kColor, dColor color.Color) {
+	kLine, dLine := NewAnalyzer(v.series).StochRSI(rsiPeriod, stochPeriod, smoothK, smoothD)
+	if len(kLine) > 0 {
+		// Обрезаем данные, чтобы они соответствовали свечам
+		alignedKLine := v.alignIndicatorData(kLine)
+		alignedDLine := v.alignIndicatorData(dLine)
+
 		v.AddIndicator(IndicatorConfig{
-			Name:    fmt.Sprintf("StochRSI(%d %d %d %d)", rsiPeriod, stochPeriod, smoothK, smoothD),
-			Type:    IndicatorStochRSI,
-			Data:    [][]float64{rsi1, rsi2},
-			Labels:  []string{"StochRSI"},
-			Color:   v.colors.IndicatorLines[2],
-			Overlay: false,
+			Name:      fmt.Sprintf("StochRSI(%d,%d,%d,%d)", rsiPeriod, stochPeriod, smoothK, smoothD),
+			Type:      IndicatorStochRSI,
+			Data:      [][]float64{alignedKLine, alignedDLine},
+			Colors:    []color.Color{kColor, dColor},
+			Labels:    []string{"%K", "%D"},
+			LineWidth: 1.5,
+			Overlay:   false,
 		})
 	}
+}
+
+// AddATR добавляет ATR индикатор
+func (v *Visualizer) AddATR(period int, c color.Color) {
+	atr := NewAnalyzer(v.series).ATR(period)
+	if len(atr) > 0 {
+		// Обрезаем данные, чтобы они соответствовали свечам
+		alignedAtr := v.alignIndicatorData(atr)
+		v.AddIndicator(IndicatorConfig{
+			Name:      fmt.Sprintf("ATR(%d)", period),
+			Type:      IndicatorATR,
+			Data:      [][]float64{alignedAtr},
+			Colors:    []color.Color{c},
+			Labels:    []string{"ATR"},
+			LineWidth: 1.5,
+			Overlay:   false,
+		})
+	}
+}
+
+// alignIndicatorData обрезает данные индикатора для соответствия свечам
+func (v *Visualizer) alignIndicatorData(indicatorData []float64) []float64 {
+	if len(indicatorData) == 0 {
+		return nil
+	}
+
+	// Вычисляем смещение между данными индикатора и свечами
+	// Индикаторы обычно имеют задержку из-за периода расчета
+	offset := v.series.Len() - len(indicatorData)
+
+	// Если индикатор короче свечей, добавляем нули в начало
+	if offset > 0 {
+		aligned := make([]float64, v.series.Len())
+		for i := 0; i < offset; i++ {
+			aligned[i] = math.NaN() // Используем NaN для пропуска точек
+		}
+		copy(aligned[offset:], indicatorData)
+		return aligned
+	}
+
+	// Если индикатор длиннее свечей, обрезаем начало
+	if offset < 0 {
+		return indicatorData[-offset:]
+	}
+
+	// Если длины равны
+	return indicatorData
 }
 
 // Render визуализирует график и возвращает изображение
@@ -224,7 +320,8 @@ func (v *Visualizer) Render() (image.Image, error) {
 	}
 
 	if indicatorCount > 0 {
-		indicatorHeight := (v.height - v.topHeight - v.margin*2) / indicatorCount
+		availableHeight := v.height - v.topHeight - v.margin*2
+		indicatorHeight := availableHeight / max(indicatorCount, 1)
 
 		// Рисуем отдельные индикаторы под свечами
 		currentY := v.topHeight + v.margin
@@ -233,7 +330,7 @@ func (v *Visualizer) Render() (image.Image, error) {
 		for _, ind := range v.indicators {
 			if !ind.Overlay {
 				v.drawIndicator(dc, ind, currentY, currentY+indicatorHeight)
-				currentY += indicatorHeight + v.margin
+				currentY += indicatorHeight + v.margin/2
 				indIndex++
 			}
 		}
@@ -276,10 +373,11 @@ func (v *Visualizer) prepareCandles() {
 	v.candles = make([]Candle, v.series.Len())
 
 	// Рассчитываем позиции свечей
-	candleSpacing := (v.width - 2*v.margin) / len(v.candles)
+	candleSpacing := (v.width - 2*v.margin) / max(len(v.candles), 1)
 	if candleSpacing < 3 {
 		candleSpacing = 3
 	}
+	v.candleWidth = max(candleSpacing-2, 1)
 
 	for i := 0; i < v.series.Len(); i++ {
 		candle := v.series.At(i)
@@ -288,8 +386,8 @@ func (v *Visualizer) prepareCandles() {
 			High:  candle.GetHighPrice(),
 			Low:   candle.GetLowPrice(),
 			Close: candle.GetClosePrice(),
-			X:     v.margin + i*candleSpacing,
-			Width: candleSpacing - 1,
+			X:     v.margin + i*candleSpacing + candleSpacing/2,
+			Width: v.candleWidth,
 		}
 	}
 }
@@ -335,14 +433,15 @@ func (v *Visualizer) drawCandles(dc *gg.Context) {
 	// Находим min и max цены для масштабирования
 	minPrice, maxPrice := v.getPriceRange()
 	priceRange := maxPrice - minPrice
+	graphHeight := float64(v.topHeight - v.margin*2)
 
 	// Рисуем каждую свечу
 	for _, candle := range v.candles {
 		// Преобразуем цены в координаты Y
-		highY := v.priceToY(candle.High, minPrice, priceRange, v.topHeight-v.margin*2)
-		lowY := v.priceToY(candle.Low, minPrice, priceRange, v.topHeight-v.margin*2)
-		openY := v.priceToY(candle.Open, minPrice, priceRange, v.topHeight-v.margin*2)
-		closeY := v.priceToY(candle.Close, minPrice, priceRange, v.topHeight-v.margin*2)
+		highY := v.priceToY(candle.High, minPrice, priceRange, graphHeight)
+		lowY := v.priceToY(candle.Low, minPrice, priceRange, graphHeight)
+		openY := v.priceToY(candle.Open, minPrice, priceRange, graphHeight)
+		closeY := v.priceToY(candle.Close, minPrice, priceRange, graphHeight)
 
 		// Выбираем цвет свечи
 		if candle.Close >= candle.Open {
@@ -354,9 +453,9 @@ func (v *Visualizer) drawCandles(dc *gg.Context) {
 		// Рисуем тень (high-low)
 		dc.SetLineWidth(1)
 		dc.DrawLine(
-			float64(candle.X+candle.Width/2),
+			float64(candle.X),
 			float64(v.margin)+highY,
-			float64(candle.X+candle.Width/2),
+			float64(candle.X),
 			float64(v.margin)+lowY,
 		)
 		dc.Stroke()
@@ -372,10 +471,10 @@ func (v *Visualizer) drawCandles(dc *gg.Context) {
 		}
 
 		dc.DrawRectangle(
-			float64(candle.X),
+			float64(candle.X-candle.Width/2),
 			float64(v.margin)+bodyTop,
 			float64(candle.Width),
-			float64(bodyHeight),
+			bodyHeight,
 		)
 
 		if candle.Close >= candle.Open {
@@ -390,37 +489,43 @@ func (v *Visualizer) drawCandles(dc *gg.Context) {
 func (v *Visualizer) drawOverlayIndicators(dc *gg.Context) {
 	minPrice, maxPrice := v.getPriceRange()
 	priceRange := maxPrice - minPrice
-	graphHeight := v.topHeight - v.margin*2
+	graphHeight := float64(v.topHeight - v.margin*2)
 
 	for _, ind := range v.indicators {
 		if ind.Overlay && len(ind.Data) > 0 {
 			for lineIdx, lineData := range ind.Data {
-				if len(lineData) == 0 {
+				if len(lineData) == 0 || len(lineData) != len(v.candles) {
 					continue
 				}
 
 				// Выбираем цвет для линии
-				colorIdx := lineIdx % len(v.colors.IndicatorLines)
-				dc.SetColor(v.colors.IndicatorLines[colorIdx])
-				dc.SetLineWidth(2)
+				var lineColor color.Color
+				if lineIdx < len(ind.Colors) {
+					lineColor = ind.Colors[lineIdx]
+				} else {
+					lineColor = v.colors.IndicatorLines[lineIdx%len(v.colors.IndicatorLines)]
+				}
 
-				// Находим смещение для выравнивания с свечами
-				offset := len(v.candles) - len(lineData)
+				dc.SetColor(lineColor)
+				dc.SetLineWidth(ind.LineWidth)
 
-				// Рисуем линию
-				for i := 1; i < len(lineData); i++ {
-					if i+offset < 0 || i+offset >= len(v.candles) {
+				// Рисуем линию, пропуская NaN значения
+				startX, startY := -1.0, -1.0
+				for i, val := range lineData {
+					if math.IsNaN(val) {
+						startX, startY = -1.0, -1.0
 						continue
 					}
 
-					x1 := float64(v.candles[i-1+offset].X + v.candles[i-1+offset].Width/2)
-					y1 := float64(v.margin) + v.priceToY(lineData[i-1], minPrice, priceRange, graphHeight)
+					x := float64(v.candles[i].X)
+					y := float64(v.margin) + v.priceToY(val, minPrice, priceRange, graphHeight)
 
-					x2 := float64(v.candles[i+offset].X + v.candles[i+offset].Width/2)
-					y2 := float64(v.margin) + v.priceToY(lineData[i], minPrice, priceRange, graphHeight)
+					if startX >= 0 && startY >= 0 {
+						dc.DrawLine(startX, startY, x, y)
+						dc.Stroke()
+					}
 
-					dc.DrawLine(x1, y1, x2, y2)
-					dc.Stroke()
+					startX, startY = x, y
 				}
 			}
 		}
@@ -442,14 +547,16 @@ func (v *Visualizer) drawIndicator(dc *gg.Context, ind IndicatorConfig, topY, bo
 
 	// Добавляем название индикатора
 	dc.SetColor(v.colors.Text)
-	dc.DrawStringAnchored(ind.Name, float64(v.width/2), float64(topY+15), 0.5, 0.5)
+	if err := dc.LoadFontFace("", 12); err == nil {
+		dc.DrawStringAnchored(ind.Name, float64(v.width/2), float64(topY+15), 0.5, 0.5)
+	}
 
 	// Рисуем данные индикатора
-	indicatorWidth := v.width - 2*v.margin
-	indicatorHeight := bottomY - topY - 30 // оставляем место для названия
+	indicatorWidth := float64(v.width - 2*v.margin)
+	indicatorHeight := float64(bottomY - topY - 30) // оставляем место для названия
 
 	for lineIdx, lineData := range ind.Data {
-		if len(lineData) == 0 {
+		if len(lineData) == 0 || len(lineData) != len(v.candles) {
 			continue
 		}
 
@@ -462,35 +569,71 @@ func (v *Visualizer) drawIndicator(dc *gg.Context, ind IndicatorConfig, topY, bo
 		}
 
 		// Выбираем цвет для линии
-		colorIdx := lineIdx % len(v.colors.IndicatorLines)
-		dc.SetColor(v.colors.IndicatorLines[colorIdx])
-		dc.SetLineWidth(1.5)
-
-		// Рисуем линию
-		for i := 1; i < len(lineData); i++ {
-			x1 := float64(v.margin + (i-1)*indicatorWidth/len(lineData))
-			y1 := float64(topY + 30 + indicatorHeight - int((lineData[i-1]-minVal)/valRange*float64(indicatorHeight)))
-
-			x2 := float64(v.margin + i*indicatorWidth/len(lineData))
-			y2 := float64(topY + 30 + indicatorHeight - int((lineData[i]-minVal)/valRange*float64(indicatorHeight)))
-
-			dc.DrawLine(x1, y1, x2, y2)
-			dc.Stroke()
+		var lineColor color.Color
+		if lineIdx < len(ind.Colors) {
+			lineColor = ind.Colors[lineIdx]
+		} else {
+			lineColor = v.colors.IndicatorLines[lineIdx%len(v.colors.IndicatorLines)]
 		}
 
-		// Для RSI рисуем уровни 30 и 70
+		dc.SetColor(lineColor)
+		dc.SetLineWidth(ind.LineWidth)
+
+		// Рисуем линию, пропуская NaN значения
+		startX, startY := -1.0, -1.0
+		for i, val := range lineData {
+			if math.IsNaN(val) {
+				startX, startY = -1.0, -1.0
+				continue
+			}
+
+			x := float64(v.margin) + (float64(i)/float64(len(lineData)-1))*indicatorWidth
+			y := float64(topY) + 30 + indicatorHeight - ((val-minVal)/valRange)*indicatorHeight
+
+			if startX >= 0 && startY >= 0 {
+				dc.DrawLine(startX, startY, x, y)
+				dc.Stroke()
+			}
+
+			startX, startY = x, y
+		}
+
+		// Для RSI и StochRSI рисуем уровни
 		if ind.Type == IndicatorRSI {
 			dc.SetColor(color.RGBA{150, 150, 150, 100})
 			dc.SetLineWidth(0.5)
 
 			// Уровень 30
-			y30 := float64(topY + 30 + indicatorHeight - int((30-minVal)/valRange*float64(indicatorHeight)))
+			y30 := float64(topY) + 30 + indicatorHeight - ((30-minVal)/valRange)*indicatorHeight
 			dc.DrawLine(float64(v.margin), y30, float64(v.width-v.margin), y30)
 
 			// Уровень 70
-			y70 := float64(topY + 30 + indicatorHeight - int((70-minVal)/valRange*float64(indicatorHeight)))
+			y70 := float64(topY) + 30 + indicatorHeight - ((70-minVal)/valRange)*indicatorHeight
 			dc.DrawLine(float64(v.margin), y70, float64(v.width-v.margin), y70)
 
+			dc.Stroke()
+		} else if ind.Type == IndicatorStochRSI {
+			dc.SetColor(color.RGBA{150, 150, 150, 100})
+			dc.SetLineWidth(0.5)
+
+			// Уровень 20
+			y20 := float64(topY) + 30 + indicatorHeight - ((20-minVal)/valRange)*indicatorHeight
+			dc.DrawLine(float64(v.margin), y20, float64(v.width-v.margin), y20)
+
+			// Уровень 80
+			y80 := float64(topY) + 30 + indicatorHeight - ((80-minVal)/valRange)*indicatorHeight
+			dc.DrawLine(float64(v.margin), y80, float64(v.width-v.margin), y80)
+
+			dc.Stroke()
+		}
+
+		// Для MACD рисуем нулевую линию
+		if ind.Type == IndicatorMACD && lineIdx == 0 {
+			dc.SetColor(color.RGBA{150, 150, 150, 100})
+			dc.SetLineWidth(0.5)
+
+			zeroY := float64(topY) + 30 + indicatorHeight - ((0-minVal)/valRange)*indicatorHeight
+			dc.DrawLine(float64(v.margin), zeroY, float64(v.width-v.margin), zeroY)
 			dc.Stroke()
 		}
 	}
@@ -500,32 +643,50 @@ func (v *Visualizer) drawIndicator(dc *gg.Context, ind IndicatorConfig, topY, bo
 func (v *Visualizer) drawTitleAndLegend(dc *gg.Context) {
 	dc.SetColor(v.colors.Text)
 
-	// Заголовок
-	dc.DrawStringAnchored("Technical Analysis Chart",
-		float64(v.width/2), float64(v.margin/2), 0.5, 0.5)
+	// Загружаем шрифт (если доступен)
+	if err := dc.LoadFontFace("", 14); err == nil {
+		// Заголовок
+		dc.DrawStringAnchored("Technical Analysis Chart",
+			float64(v.width/2), float64(v.margin/2), 0.5, 0.5)
 
-	// Легенда для свечей
-	legendX := v.width - v.margin - 150
-	legendY := v.margin - 20
+		// Легенда
+		legendX := v.width - v.margin - 150
+		legendY := v.margin - 20
 
-	// Бычьи свечи
-	dc.SetColor(v.colors.Bullish)
-	dc.DrawString("Bullish", float64(legendX), float64(legendY))
+		// Бычьи свечи
+		dc.SetColor(v.colors.Bullish)
+		dc.DrawString("Bullish", float64(legendX), float64(legendY))
 
-	// Медвежьи свечи
-	dc.SetColor(v.colors.Bearish)
-	dc.DrawString("Bearish", float64(legendX+70), float64(legendY))
+		// Медвежьи свечи
+		dc.SetColor(v.colors.Bearish)
+		dc.DrawString("Bearish", float64(legendX+70), float64(legendY))
 
-	// Легенда для индикаторов
-	legendY += 20
-	for i, ind := range v.indicators {
-		if i >= 6 { // ограничиваем количество индикаторов в легенде
-			break
+		// Легенда для индикаторов
+		legendY += 20
+		for i, ind := range v.indicators {
+			if i >= 6 { // ограничиваем количество индикаторов в легенде
+				break
+			}
+
+			var indicatorColor color.Color
+			if len(ind.Colors) > 0 {
+				indicatorColor = ind.Colors[0]
+			} else {
+				indicatorColor = v.colors.IndicatorLines[i%len(v.colors.IndicatorLines)]
+			}
+
+			dc.SetColor(indicatorColor)
+
+			// Обрезаем длинное имя для легенды
+			name := ind.Name
+			if len(name) > 15 {
+				name = name[:12] + "..."
+			}
+
+			dc.DrawString(name,
+				float64(legendX+(i%2)*70),
+				float64(legendY+20*(i/2)))
 		}
-
-		colorIdx := i % len(v.colors.IndicatorLines)
-		dc.SetColor(v.colors.IndicatorLines[colorIdx])
-		dc.DrawString(ind.Name, float64(legendX+(i%2)*70), float64(legendY+20*(i/2)))
 	}
 }
 
@@ -536,16 +697,12 @@ func (v *Visualizer) getPriceRange() (min, max float64) {
 		return 0, 1
 	}
 
-	min = v.candles[0].Low
-	max = v.candles[0].High
+	min = math.Inf(1)
+	max = math.Inf(-1)
 
 	for _, candle := range v.candles {
-		if candle.Low < min {
-			min = candle.Low
-		}
-		if candle.High > max {
-			max = candle.High
-		}
+		min = math.Min(min, candle.Low)
+		max = math.Max(max, candle.High)
 	}
 
 	// Учитываем оверлейные индикаторы при определении диапазона
@@ -553,11 +710,9 @@ func (v *Visualizer) getPriceRange() (min, max float64) {
 		if ind.Overlay && len(ind.Data) > 0 {
 			for _, lineData := range ind.Data {
 				for _, val := range lineData {
-					if val < min {
-						min = val
-					}
-					if val > max {
-						max = val
+					if !math.IsNaN(val) {
+						min = math.Min(min, val)
+						max = math.Max(max, val)
 					}
 				}
 			}
@@ -574,24 +729,25 @@ func (v *Visualizer) getIndicatorRange(data []float64) (min, max float64) {
 		return 0, 1
 	}
 
-	min = data[0]
-	max = data[0]
+	min = math.Inf(1)
+	max = math.Inf(-1)
 
 	for _, val := range data {
-		if val < min {
-			min = val
-		}
-		if val > max {
-			max = val
+		if !math.IsNaN(val) {
+			min = math.Min(min, val)
+			max = math.Max(max, val)
 		}
 	}
 
 	// Добавляем небольшой зазор
 	gap := (max - min) * 0.1
+	if gap == 0 {
+		gap = 1
+	}
 	return min - gap, max + gap
 }
 
-func (v *Visualizer) priceToY(price, minPrice, priceRange float64, height int) float64 {
+func (v *Visualizer) priceToY(price, minPrice, priceRange, height float64) float64 {
 	normalized := (price - minPrice) / priceRange
-	return float64(float64(height) * (1 - normalized))
+	return height * (1 - normalized)
 }
