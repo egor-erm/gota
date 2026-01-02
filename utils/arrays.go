@@ -1,17 +1,40 @@
 package utils
 
 func AlignLengths(arr1, arr2 []float64) ([]float64, []float64) {
-	if len(arr1) == len(arr2) {
-		return arr1, arr2
+	aligned := AlignLengthsMulti(arr1, arr2)
+	return aligned[0], aligned[1]
+}
+
+func AlignLengthsMulti(arrays ...[]float64) [][]float64 {
+	if len(arrays) == 0 {
+		return nil
 	}
 
-	if len(arr1) > len(arr2) {
-		startIndex := len(arr1) - len(arr2)
-
-		return arr1[startIndex:], arr2
-	} else {
-		startIndex := len(arr2) - len(arr1)
-
-		return arr1, arr2[startIndex:]
+	maxLength := 0
+	for _, arr := range arrays {
+		if len(arr) > maxLength {
+			maxLength = len(arr)
+		}
 	}
+
+	aligned := make([][]float64, len(arrays))
+	for i, arr := range arrays {
+		if len(arr) == maxLength {
+			aligned[i] = arr
+			continue
+		}
+
+		startIndex := maxLength - len(arr)
+		if startIndex < 0 {
+			startIndex = 0
+		}
+
+		if startIndex < len(arr) {
+			aligned[i] = arr[startIndex:]
+		} else {
+			aligned[i] = make([]float64, 0)
+		}
+	}
+
+	return aligned
 }
