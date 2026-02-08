@@ -15,9 +15,17 @@ import (
 // TradeType - тип сделки
 type TradeType string
 
+type ExitReason string
+
 const (
 	TradeTypeLong  TradeType = "LONG"
 	TradeTypeShort TradeType = "SHORT"
+)
+
+const (
+	ExitBySignal ExitReason = "SIGNAL"
+	ExitByStop   ExitReason = "STOP_LOSS"
+	ExitByTake   ExitReason = "TAKE_PROFIT"
 )
 
 // Trade - структура сделки
@@ -29,6 +37,10 @@ type Trade struct {
 	Type          TradeType
 	Profit        float64
 	ProfitPercent float64
+
+	StopLossPrice   float64
+	TakeProfitPrice float64
+	ExitReason      ExitReason
 }
 
 // TradeSignal - сигнал для входа/выхода
@@ -37,7 +49,10 @@ type TradeSignal struct {
 	Price    float64
 	IsEntry  bool
 	Type     TradeType
-	Strength float64 // сила сигнала (0-1)
+	Strength float64
+
+	StopLoss   float64 // например 0.02 = 2%
+	TakeProfit float64 // например 0.05 = 5%
 }
 
 // Strategy - интерфейс стратегии
@@ -130,6 +145,37 @@ func (b *Backtester) Backtest(strategy Strategy, candles gota.CandleSeries) *Bac
 	for i := 0; i < candles.Len(); i++ {
 		candle := candles.At(i)
 		price := candle.GetClosePrice()
+		high := candle.GetHighPrice()
+		low := candle.GetLowPrice()
+
+		// 1. Проверяем SL / TP
+		if currentTrade != nil {
+			exitPrice := 0.0
+			exitReason := ExitReason("")
+
+			if currentTrade.Type == TradeTypeLong {
+				if currentTrade.StopLossPrice > 0 && low <= currentTrade.StopLossPrice {
+					exitPrice = currentTrade.StopLossPrice
+					exitReason = ExitByStop
+				} else if currentTrade.TakeProfitPrice > 0 && high >= currentTrade.TakeProfitPrice {
+					exitPrice = currentTrade.TakeProfitPrice
+					exitReason = ExitByTake
+				}
+			} else {
+				if currentTrade.StopLossPrice > 0 && high >= currentTrade.StopLossPrice {
+					exitPrice = currentTrade.StopLossPrice
+					exitReason = ExitByStop
+				} else if currentTrade.TakeProfitPrice > 0 && low <= currentTrade.TakeProfitPrice {
+					exitPrice = currentTrade.TakeProfitPrice
+					exitReason = ExitByTake
+				}
+			}
+
+			if exitReason != "" {
+				b.closeTrade(currentTrade, exitPrice, candle.GetStartTime(), exitReason, &equity, result)
+				currentTrade = nil
+			}
+		}
 
 		// Проверяем сигналы для этой свечи
 		for _, signal := range signals {
@@ -141,12 +187,28 @@ func (b *Backtester) Backtest(strategy Strategy, candles gota.CandleSeries) *Bac
 				// Сигнал на вход
 				if currentTrade == nil {
 					// Учитываем проскальзывание
-					entryPrice := price * (1 + b.slippage)
+					close := candle.GetClosePrice()
+
+					var entryPrice float64
+					if signal.Type == TradeTypeLong {
+						entryPrice = close * (1 + b.slippage)
+					} else {
+						entryPrice = close * (1 - b.slippage)
+					}
+
+					sl, tp := calcSLTP(
+						entryPrice,
+						signal.StopLoss,
+						signal.TakeProfit,
+						signal.Type,
+					)
 
 					currentTrade = &Trade{
-						EntryTime:  signal.Time,
-						EntryPrice: entryPrice,
-						Type:       signal.Type,
+						EntryTime:       signal.Time,
+						EntryPrice:      entryPrice,
+						Type:            signal.Type,
+						StopLossPrice:   sl,
+						TakeProfitPrice: tp,
 					}
 				}
 			} else {
@@ -155,32 +217,14 @@ func (b *Backtester) Backtest(strategy Strategy, candles gota.CandleSeries) *Bac
 					// Учитываем проскальзывание
 					exitPrice := price * (1 - b.slippage)
 
-					currentTrade.ExitTime = signal.Time
-					currentTrade.ExitPrice = exitPrice
-
-					// Рассчитываем прибыль
-					var profit float64
-					if currentTrade.Type == TradeTypeLong {
-						profit = (exitPrice - currentTrade.EntryPrice) / currentTrade.EntryPrice
-					} else {
-						profit = (currentTrade.EntryPrice - exitPrice) / currentTrade.EntryPrice
-					}
-
-					// Учитываем комиссию (вход + выход)
-					profit -= b.commission * 2
-
-					// Рассчитываем абсолютную прибыль
-					positionValue := equity * b.positionSize
-					profitAbs := profit * positionValue
-
-					currentTrade.Profit = profitAbs
-					currentTrade.ProfitPercent = profit * 100
-
-					// Обновляем капитал
-					equity += profitAbs
-
-					// Сохраняем сделку
-					result.Trades = append(result.Trades, *currentTrade)
+					b.closeTrade(
+						currentTrade,
+						exitPrice,
+						signal.Time,
+						ExitBySignal,
+						&equity,
+						result,
+					)
 					currentTrade = nil
 				}
 			}
@@ -202,31 +246,65 @@ func (b *Backtester) Backtest(strategy Strategy, candles gota.CandleSeries) *Bac
 	// Форсируем выход из открытой позиции в конце
 	if currentTrade != nil {
 		lastCandle := candles.At(candles.Len() - 1)
-		currentTrade.ExitTime = lastCandle.GetStartTime()
-		currentTrade.ExitPrice = lastCandle.GetClosePrice()
 
-		var profit float64
-		if currentTrade.Type == TradeTypeLong {
-			profit = (currentTrade.ExitPrice - currentTrade.EntryPrice) / currentTrade.EntryPrice
-		} else {
-			profit = (currentTrade.EntryPrice - currentTrade.ExitPrice) / currentTrade.EntryPrice
-		}
-
-		profit -= b.commission * 2
-		positionValue := equity * b.positionSize
-		profitAbs := profit * positionValue
-
-		currentTrade.Profit = profitAbs
-		currentTrade.ProfitPercent = profit * 100
-
-		equity += profitAbs
-		result.Trades = append(result.Trades, *currentTrade)
+		b.closeTrade(
+			currentTrade,
+			lastCandle.GetClosePrice(),
+			lastCandle.GetStartTime(),
+			ExitBySignal,
+			&equity,
+			result,
+		)
 	}
 
 	// Рассчитываем статистику
 	b.calculateStatistics(result, b.initialCapital)
 
 	return result
+}
+
+func (b *Backtester) closeTrade(trade *Trade, exitPrice float64, exitTime time.Time, reason ExitReason, equity *float64, result *BacktestResult) {
+	trade.ExitPrice = exitPrice
+	trade.ExitTime = exitTime
+	trade.ExitReason = reason
+
+	var pct float64
+	if trade.Type == TradeTypeLong {
+		pct = (exitPrice - trade.EntryPrice) / trade.EntryPrice
+	} else {
+		pct = (trade.EntryPrice - exitPrice) / trade.EntryPrice
+	}
+
+	pct -= b.commission * 2
+
+	posValue := *equity * b.positionSize
+	profit := pct * posValue
+
+	trade.Profit = profit
+	trade.ProfitPercent = pct * 100
+
+	*equity += profit
+	result.Trades = append(result.Trades, *trade)
+}
+
+func calcSLTP(entry float64, slPct, tpPct float64, t TradeType) (sl, tp float64) {
+	if t == TradeTypeLong {
+		if slPct > 0 {
+			sl = entry * (1 - slPct)
+		}
+		if tpPct > 0 {
+			tp = entry * (1 + tpPct)
+		}
+	} else {
+		if slPct > 0 {
+			sl = entry * (1 + slPct)
+		}
+		if tpPct > 0 {
+			tp = entry * (1 - tpPct)
+		}
+	}
+
+	return
 }
 
 // calculateStatistics рассчитывает статистику бектеста
