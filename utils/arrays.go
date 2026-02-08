@@ -10,29 +10,22 @@ func AlignLengthsMulti(arrays ...[]float64) [][]float64 {
 		return nil
 	}
 
-	maxLength := 0
-	for _, arr := range arrays {
-		if len(arr) > maxLength {
-			maxLength = len(arr)
+	// Находим МИНИМАЛЬНУЮ длину
+	minLength := len(arrays[0])
+	for _, arr := range arrays[1:] {
+		if len(arr) < minLength {
+			minLength = len(arr)
 		}
 	}
 
 	aligned := make([][]float64, len(arrays))
 	for i, arr := range arrays {
-		if len(arr) == maxLength {
+		if len(arr) == minLength {
 			aligned[i] = arr
-			continue
-		}
-
-		startIndex := maxLength - len(arr)
-		if startIndex < 0 {
-			startIndex = 0
-		}
-
-		if startIndex < len(arr) {
-			aligned[i] = arr[startIndex:]
 		} else {
-			aligned[i] = make([]float64, 0)
+			// Берем последние minLength элементов
+			startIndex := len(arr) - minLength
+			aligned[i] = arr[startIndex:]
 		}
 	}
 
