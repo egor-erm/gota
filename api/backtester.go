@@ -187,14 +187,7 @@ func (b *Backtester) Backtest(strategy Strategy, candles gota.CandleSeries) *Bac
 				// Сигнал на вход
 				if currentTrade == nil {
 					// Учитываем проскальзывание
-					close := candle.GetClosePrice()
-
-					var entryPrice float64
-					if signal.Type == TradeTypeLong {
-						entryPrice = close * (1 + b.slippage)
-					} else {
-						entryPrice = close * (1 - b.slippage)
-					}
+					entryPrice := price * (1 - b.slippage)
 
 					sl, tp := calcSLTP(
 						entryPrice,
