@@ -50,21 +50,22 @@ type Strategy interface {
 
 // BacktestResult - результаты бектеста
 type BacktestResult struct {
-	TotalTrades   int
-	WinningTrades int
-	LosingTrades  int
-	TotalProfit   float64
-	TotalReturn   float64
-	MaxDrawdown   float64
-	WinRate       float64
-	AvgWin        float64
-	AvgLoss       float64
-	ProfitFactor  float64
-	SharpeRatio   float64
-	Trades        []Trade
-	EquityCurve   []float64
-	MaxEquity     float64
-	MinEquity     float64
+	TotalTrades     int
+	WinningTrades   int
+	LosingTrades    int
+	TotalProfit     float64
+	TotalRealProfit float64
+	TotalReturn     float64
+	MaxDrawdown     float64
+	WinRate         float64
+	AvgWin          float64
+	AvgLoss         float64
+	ProfitFactor    float64
+	SharpeRatio     float64
+	Trades          []Trade
+	EquityCurve     []float64
+	MaxEquity       float64
+	MinEquity       float64
 }
 
 // Backtester - структура для бектестинга
@@ -236,8 +237,15 @@ func (b *Backtester) calculateStatistics(result *BacktestResult, initialCapital 
 
 	var totalWins, totalLosses float64
 	var wins, losses int
+	var totalLongProfit, totalShortProfit float64
 
 	for _, trade := range result.Trades {
+		if trade.Type == TradeTypeLong {
+			totalLongProfit += trade.Profit
+		} else {
+			totalShortProfit += trade.Profit
+		}
+
 		if trade.Profit > 0 {
 			wins++
 			totalWins += trade.Profit
@@ -246,6 +254,8 @@ func (b *Backtester) calculateStatistics(result *BacktestResult, initialCapital 
 			totalLosses += trade.Profit
 		}
 	}
+
+	result.TotalRealProfit = totalLongProfit + totalShortProfit
 
 	result.WinningTrades = wins
 	result.LosingTrades = losses
@@ -283,18 +293,6 @@ func (b *Backtester) calculateStatistics(result *BacktestResult, initialCapital 
 
 // PrintResults выводит результаты бектеста
 func (b *Backtester) PrintResults(result *BacktestResult) {
-	fmt.Println("=== РЕЗУЛЬТАТЫ БЕКТЕСТА ===")
-	fmt.Printf("Всего сделок: %d\n", result.TotalTrades)
-	fmt.Printf("Прибыльных: %d (%.1f%%)\n", result.WinningTrades, result.WinRate)
-	fmt.Printf("Убыточных: %d\n", result.LosingTrades)
-	fmt.Printf("Общая прибыль: $%.2f\n", result.TotalProfit)
-	fmt.Printf("Общая доходность: %.2f%%\n", result.TotalReturn)
-	fmt.Printf("Макс. просадка: %.2f%%\n", result.MaxDrawdown)
-	fmt.Printf("Средняя прибыль: $%.2f\n", result.AvgWin)
-	fmt.Printf("Средний убыток: $%.2f\n", result.AvgLoss)
-	fmt.Printf("Фактор прибыли: %.2f\n", result.ProfitFactor)
-	fmt.Println("==========================")
-
 	// Выводим детали по сделкам
 	if len(result.Trades) > 0 {
 		fmt.Println("\n=== ДЕТАЛИ СДЕЛОК ===")
@@ -357,9 +355,22 @@ func (b *Backtester) PrintResults(result *BacktestResult) {
 			fmt.Printf("  Прибыльных SHORT: %d (%.1f%%)\n",
 				winningShorts, float64(winningShorts)/float64(shortTrades)*100)
 			fmt.Printf("  Общая прибыль по SHORT: $%.2f\n", totalShortProfit)
-			fmt.Printf("  Средняя прибыль по SHORT: $%.2f\n", totalShortProfit/float64(shortTrades))
+			fmt.Printf("  Средняя прибыль по SHORT: $%.2f\n\n", totalShortProfit/float64(shortTrades))
 		}
 	}
+
+	fmt.Println("=== РЕЗУЛЬТАТЫ БЕКТЕСТА ===")
+	fmt.Printf("Всего сделок: %d\n", result.TotalTrades)
+	fmt.Printf("Прибыльных: %d (%.1f%%)\n", result.WinningTrades, result.WinRate)
+	fmt.Printf("Убыточных: %d\n", result.LosingTrades)
+	fmt.Printf("Общая реальная прибыль: $%.2f\n", result.TotalRealProfit)
+	fmt.Printf("Общая прибыль: $%.2f\n", result.TotalProfit)
+	fmt.Printf("Общая доходность: %.2f%%\n", result.TotalReturn)
+	fmt.Printf("Макс. просадка: %.2f%%\n", result.MaxDrawdown)
+	fmt.Printf("Средняя прибыль: $%.2f\n", result.AvgWin)
+	fmt.Printf("Средний убыток: $%.2f\n", result.AvgLoss)
+	fmt.Printf("Фактор прибыли: %.2f\n", result.ProfitFactor)
+	fmt.Println("==========================")
 }
 
 // CSVExporter экспортирует результаты в CSV
