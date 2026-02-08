@@ -80,3 +80,13 @@ func (a *Analyzer) StochRSI(rsiPeriod, stochPeriod, smoothK, smoothD int) ([]flo
 
 	return result.K, result.D
 }
+
+func (a *Analyzer) ADX(period int) ([]float64, []float64, []float64) {
+	adx := trend.NewADX(period)
+	result := adx.Calculate(a.series)
+	if result == nil {
+		return nil, nil, nil
+	}
+
+	return result.ADXValues, result.PlusDI, result.MinusDI
+}

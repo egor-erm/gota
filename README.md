@@ -10,11 +10,11 @@
 - **EMA (Exponential Moving Average)** - Экспоненциальная скользящая средняя
 - **WMA (Weighted Moving Average)** - Взвешенная скользящая средняя
 - **MACD (Moving Average Convergence/Divergence)** - Cхождение/Расхождение скользящих средних
-
+- **ADX (Average Directional Movement Index)** - Индикатор среднего направленного движения
 
 ### Индикаторы момента
 - **RSI (Relative Strength Index)** - Индекс относительной силы
-
+- **StochRSI (Stochastic Relative Strength Index)** - Стохастический индекс относительной силы
 
 ### Индикаторы волатильности
 - **ATR (Average True Range)** - Cредний истинный диапазон
